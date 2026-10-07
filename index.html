@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오늘의 스킨케어</title>
+
+<!--
+  ============================================================
+  ✏️ 여기만 고치면 내 루틴이 됩니다 (CONFIG)
+  - 직접 고쳐도 되고, PROMPTS.md의 프롬프트로 Claude에게 맡겨도 돼요.
+  - 아래 예시는 가상의 항목으로 만든 화면 데모입니다. 실제 개인 루틴이나 사용 권고가 아닙니다.
+  ============================================================
+-->
+<script>
+var CONFIG = {
+  title: '오늘의 스킨케어 · 샘플',
+  updated: '2026-10-07',
+  amUntilHour: 15,
+  footer: '화면 기능을 보여주는 가상 샘플입니다. 사용 방법·효과·안전성을 권고하거나 보장하지 않습니다.',
+  types: {
+    basic: { label: '기본 예시', color: '#0F8674', dark: '#4CCBB6' },
+    rotate: { label: '교체 예시', color: '#2C5FC7', dark: '#83A6F3', rest: ['샘플 옵션 C'] },
+    simple: { label: '간단 예시', color: '#A26B06', dark: '#E6B452' },
+    option: { label: '옵션 예시', color: '#7449BD', dark: '#B899EE' }
+  },
+  // 아래 항목은 개인의 제품 목록이 아닌 가상의 UI 데모 데이터입니다.
+  // step: 문자열 또는 { name, kind, tag, note, mix, rotate }.
+  // day: { type, title, am, pm, amNote, pmNote, prep, rest }.
+  days: {
+    mon: { type: 'basic', title: '기본 케어 예시',
+      am: ['샘플 클렌저', '샘플 토너', '샘플 보습제', '샘플 선케어'],
+      pm: ['샘플 클렌저', '샘플 토너', { name: '샘플 보습제', kind: 'basic', tag: '예시' }] },
+    tue: { type: 'rotate', title: '주간 교체 예시',
+      am: ['샘플 클렌저', { rotate: ['샘플 옵션 A', '샘플 옵션 B'], kind: 'rotate', tag: '주간 교체' }, '샘플 보습제'],
+      pm: ['샘플 클렌저', '샘플 보습제'],
+      pmNote: '교체 표시는 UI 기능 예시입니다. 실제 사용 일정은 사용자가 별도로 정합니다.' },
+    wed: { type: 'simple', title: '간단 케어 예시',
+      am: ['샘플 클렌저', '샘플 보습제', '샘플 선케어'],
+      pm: ['샘플 클렌저', { name: '샘플 보습제', kind: 'simple', tag: '샘플', note: '체크박스를 눌러 완료 상태를 확인해 보세요.' }],
+      prep: '내일의 예시 항목을 확인해 보세요.' },
+    thu: { type: 'option', title: '옵션 표시 예시',
+      am: ['샘플 클렌저', '샘플 토너', '샘플 보습제', '샘플 선케어'],
+      pm: ['샘플 클렌저', { name: '샘플 옵션 C', kind: 'option', tag: '옵션', note: '특정 제품의 사용을 권하는 항목이 아닙니다.' }, '샘플 보습제'] },
+    fri: { type: 'basic', title: '기본 케어 예시',
+      am: ['샘플 클렌저', '샘플 토너', '샘플 보습제', '샘플 선케어'],
+      pm: ['샘플 클렌저', '샘플 보습제'] },
+    sat: { type: 'rotate', title: '4주 교체 예시',
+      am: ['샘플 클렌저', '샘플 보습제'],
+      pm: ['샘플 클렌저', { rotate: ['샘플 옵션 A', '샘플 옵션 B', '샘플 옵션 C', '샘플 옵션 D'], kind: 'rotate', tag: '4주 교체' }, '샘플 보습제'] },
+    sun: { type: 'simple', title: '빈 시간대 예시',
+      am: ['샘플 클렌저', '샘플 보습제', '샘플 선케어'],
+      pm: [], pmNote: '저녁 항목을 비운 경우의 화면 예시입니다.' }
+  },
+  inventory: [
+    { group: '가상 기본 항목', items: ['샘플 클렌저', '샘플 토너', '샘플 보습제', '샘플 선케어'] },
+    { group: '가상 옵션 항목', items: ['샘플 옵션 A', '샘플 옵션 B', '샘플 옵션 C', '샘플 옵션 D'] },
+    { group: '목록 표시 예시', items: [{ name: '이전 샘플 항목', note: '다 씀', gone: true }] }
+  ]
+};
+</script>
+
+<style>
+:root{
+  --paper:#EAEFEE; --surface:#F7FAF9; --ink:#1B2A2D; --ink-2:#56686B; --line:#CFD9D8;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#132020; --surface:#1A2929; --ink:#E3ECEA; --ink-2:#98AAA7; --line:#2B3E3D;
+    color-scheme:dark;
+  }
+  :root:not([data-theme="light"]) .tint{--c:var(--cd)}
+}
+:root[data-theme="dark"]{
+  --paper:#132020; --surface:#1A2929; --ink:#E3ECEA; --ink-2:#98AAA7; --line:#2B3E3D;
+  color-scheme:dark;
+}
+.tint{--c:var(--cl)}
+:root[data-theme="dark"] .tint{--c:var(--cd)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit}
+.wrap{max-width:960px;margin:0 auto;padding:20px 18px 32px;--c:var(--ink)}
+
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0 26px}
+.cell{
+  appearance:none;position:relative;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:9px 0 8px;border:1.5px solid var(--line);border-radius:10px 10px 16px 16px;
+  background:var(--surface);color:var(--ink-2);font-size:13px;
+}
+.cell .pip{width:12px;height:12px;border-radius:50%;background:var(--c)}
+.cell.is-today{color:var(--ink);font-weight:600;border-color:var(--c)}
+.cell.is-today::before{
+  content:"";position:absolute;left:22%;right:22%;top:-7px;height:5px;
+  border-radius:5px 5px 0 0;background:var(--c);animation:lid .5s ease-out both;
+}
+.cell[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 16%,var(--surface))}
+@keyframes lid{from{transform:translateY(5px);opacity:0}to{transform:none;opacity:1}}
+
+.head{margin-bottom:16px}
+.date{margin:0 0 6px;color:var(--ink-2);font-size:14px;font-variant-numeric:tabular-nums}
+h1{margin:0;display:flex;align-items:center;gap:14px;font-size:clamp(28px,7vw,40px);font-weight:600;letter-spacing:-0.02em;line-height:1.15}
+.capsule{
+  flex:none;width:30px;height:14px;border-radius:7px;transform:rotate(-24deg);
+  background:linear-gradient(90deg,var(--c) 50%,color-mix(in srgb,var(--c) 28%,var(--surface)) 50%);
+}
+.rest{margin:10px 0 0;font-size:14px;color:var(--ink-2)}
+.back{appearance:none;cursor:pointer;margin-top:12px;padding:6px 14px;font-size:13px;background:transparent;border:1.5px solid var(--c);border-radius:999px}
+
+.bar{margin:8px 0 2px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:999px}
+.seg button{appearance:none;border:0;background:transparent;cursor:pointer;padding:7px 22px;border-radius:999px;font-size:14px;color:var(--ink-2)}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--paper);font-weight:600}
+
+.slots{display:grid;gap:8px 40px;margin-top:8px}
+.slot-head{display:flex;align-items:baseline;justify-content:space-between;padding:14px 0 8px;border-bottom:1.5px solid var(--ink)}
+.slot-head h2{margin:0;font-size:17px;font-weight:600}
+.count{margin-left:auto;font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.note{margin:10px 0 0;font-size:13.5px;color:var(--ink-2)}
+.empty{margin:14px 0 0;font-size:14px;color:var(--ink-2)}
+.steps{list-style:none;margin:0;padding:0}
+.step{border-bottom:1px solid var(--line)}
+.row{position:relative;display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start;padding:11px 2px;cursor:pointer}
+.row.static{cursor:default}
+.sr{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
+.dot{
+  width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);
+  display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;transition:background-color .15s,border-color .15s,color .15s;
+}
+.dot::before{content:attr(data-n)}
+.sr:checked + .dot{background:var(--c);border-color:var(--c);color:var(--surface)}
+.sr:checked + .dot::before{content:"✓"}
+.sr:focus-visible + .dot{outline:2px solid var(--c);outline-offset:2px}
+.txt{line-height:1.45;padding-top:1px}
+.sr:checked ~ .txt .name{color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--ink-2)}
+.step.strong .name{font-weight:600}
+.tag{
+  display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;
+  font-size:12px;line-height:1.3;white-space:nowrap;vertical-align:1px;
+  color:var(--ink-2);background:color-mix(in srgb,var(--ink-2) 12%,transparent);
+}
+.tag.tint{color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}
+.sub{display:block;margin-top:2px;font-size:13px;color:var(--ink-2)}
+
+.tomorrow{margin:22px 0 0;font-size:14px;color:var(--ink-2)}
+
+.inv{margin-top:28px;border-top:1.5px solid var(--ink)}
+.inv summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;padding:14px 0;font-size:16px;font-weight:600}
+.inv summary::-webkit-details-marker{display:none}
+.inv summary::after{content:"+";font-weight:400;color:var(--ink-2)}
+.inv[open] summary::after{content:"−"}
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px 28px;padding:2px 0 8px}
+.inv h3{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.inv ul{margin:0;padding:0;list-style:none;font-size:14px;line-height:1.6}
+.inv .muted{color:var(--ink-2)}
+.inv small{font-size:12px;color:var(--ink-2);margin-left:4px}
+
+.foot{margin-top:26px;font-size:12.5px;color:var(--ink-2)}
+.foot p{margin:0 0 4px}
+
+.cell:focus-visible,.seg button:focus-visible,.back:focus-visible,.inv summary:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+
+@media (max-width:759.98px){
+  .slot:not(.active){display:none}
+  .slot-head h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (min-width:760px){
+  .bar{display:none}
+  .slots{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<main class="wrap tint" id="wrap">
+  <nav class="week" id="week" aria-label="이번 주"></nav>
+
+  <header class="head">
+    <p class="date" id="date"></p>
+    <h1><span class="capsule" aria-hidden="true"></span><span id="title"></span></h1>
+    <p class="rest" id="rest"></p>
+    <button class="back" id="back" type="button" hidden>오늘 보기</button>
+  </header>
+
+  <div class="bar">
+    <div class="seg" id="seg" role="tablist" aria-label="시간대">
+      <button type="button" role="tab" id="tab-am" data-slot="am" aria-controls="panel-am">아침</button>
+      <button type="button" role="tab" id="tab-pm" data-slot="pm" aria-controls="panel-pm">저녁</button>
+    </div>
+  </div>
+
+  <div class="slots" id="slots"></div>
+  <p class="tomorrow" id="tomorrow"></p>
+
+  <details class="inv">
+    <summary>샘플 제품 목록 <span id="invCount"></span></summary>
+    <div class="inv-grid" id="inv"></div>
+  </details>
+
+  <footer class="foot">
+    <p id="updated"></p>
+    <p id="footer"></p>
+  </footer>
+</main>
+
+<script>
+(function(){
+  var C = CONFIG;
+  var DOW = ['일','월','화','수','목','금','토'];
+  var KEYS = ['sun','mon','tue','wed','thu','fri','sat'];
+  var STORE_KEY = 'skin-widget-checks';
+
+  function esc(v){
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
+    });
+  }
+  function tint(key){
+    var t = C.types[key];
+    if (!t) return { cls: '', style: '' };
+    return { cls: ' tint', style: ' style="--cl:' + esc(t.color) + ';--cd:' + esc(t.dark || t.color) + '"' };
+  }
+  function getDay(dow){
+    return C.days[KEYS[dow]] || { title: '쉬는 날', am: [], pm: [] };
+  }
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function dateKey(d){ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function isoWeek(d){
+    var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var n = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - n);
+    var y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+    return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+  }
+  function autoSlot(d){
+    var cutoff = typeof C.amUntilHour === 'number' && C.amUntilHour >= 0 && C.amUntilHour <= 24 ? C.amUntilHour : 15;
+    return d.getHours() < cutoff ? 'am' : 'pm';
+  }
+
+  var store = {
+    get: function(){ try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; } },
+    set: function(v){ try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  var now = new Date(), todayKey = dateKey(now), view = null, slot = autoSlot(now), manual = false;
+
+  function checks(){
+    var c = store.get();
+    if (!c || typeof c !== 'object' || c.date !== todayKey) c = { date: todayKey, am: [], pm: [] };
+    if (!Array.isArray(c.am)) c.am = [];
+    if (!Array.isArray(c.pm)) c.pm = [];
+    return c;
+  }
+
+  var $ = function(id){ return document.getElementById(id); };
+  var wrap = $('wrap'), weekEl = $('week'), slotsEl = $('slots'), seg = $('seg');
+
+  function stepHTML(raw, i, w, live, checked){
+    var st = typeof raw === 'string' ? { name: raw } : raw;
+    var name = st.rotate && st.rotate.length ? st.rotate[w % st.rotate.length] : st.name;
+    var k = st.kind ? tint(st.kind) : { cls: '', style: '' };
+    var tag = st.tag ? '<span class="tag' + k.cls + '"' + k.style + '>' + esc(st.tag) + '</span>' : '';
+    var note = st.note || (st.rotate && st.rotate.length > 1
+      ? (st.rotate.length === 2 ? '격주로 번갈아' : st.rotate.length + '주마다 순환') : '');
+    var subs = (note ? '<span class="sub">' + esc(note) + '</span>' : '') +
+               (st.mix ? '<span class="sub">크림에 섞기: ' + esc(st.mix) + '</span>' : '');
+    var inner = '<span class="dot" data-n="' + (i + 1) + '" aria-hidden="true"></span>' +
+                '<span class="txt"><span class="name">' + esc(name) + '</span>' + tag + subs + '</span>';
+    var cls = 'step' + (st.kind && C.types[st.kind] ? ' strong' : '');
+    if (live) {
+      return '<li class="' + cls + '"><label class="row"><input class="sr" type="checkbox" data-i="' + i + '"' +
+             (checked ? ' checked' : '') + '>' + inner + '</label></li>';
+    }
+    return '<li class="' + cls + '"><div class="row static">' + inner + '</div></li>';
+  }
+
+  function slotHTML(s, day, w, live, c){
+    var steps = day[s] || [], arr = c[s] || [], done = 0, list = '';
+    for (var i = 0; i < steps.length; i++) {
+      if (arr[i]) done++;
+      list += stepHTML(steps[i], i, w, live, arr[i]);
+    }
+    var count = live ? done + '/' + steps.length : steps.length + '단계';
+    var note = day[s + 'Note'] ? '<p class="note">' + esc(day[s + 'Note']) + '</p>' : '';
+    var body = steps.length ? '<ol class="steps">' + list + '</ol>' : '<p class="empty">이 시간엔 루틴이 없어요.</p>';
+    return '<section class="slot' + (s === slot ? ' active' : '') + '" data-slot="' + s + '" id="panel-' + s +
+           '" role="tabpanel" aria-labelledby="tab-' + s + '">' +
+           '<div class="slot-head"><h2>' + (s === 'am' ? '아침' : '저녁') + '</h2><span class="count" data-count="' + s + '">' + count + '</span></div>' +
+           note + body + '</section>';
+  }
+
+  function weekHTML(){
+    var base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var mon = new Date(base); mon.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    var viewKey = dateKey(view || now), h = '';
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(mon); d.setDate(mon.getDate() + i);
+      var k = dateKey(d), dow = d.getDay(), day = getDay(dow), isT = k === todayKey, t = tint(day.type);
+      h += '<button type="button" class="cell' + t.cls + (isT ? ' is-today' : '') + '"' + t.style + ' data-key="' + k +
+           '" aria-pressed="' + (k === viewKey) + '" aria-label="' + DOW[dow] + '요일 ' + esc(day.title) + (isT ? ', 오늘' : '') + '">' +
+           '<span>' + DOW[dow] + '</span><span class="pip" aria-hidden="true"></span></button>';
+    }
+    return h;
+  }
+
+  function updateSeg(){
+    var bs = seg.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-selected', bs[i].getAttribute('data-slot') === slot ? 'true' : 'false');
+    var ps = slotsEl.querySelectorAll('.slot');
+    for (var j = 0; j < ps.length; j++) ps[j].classList.toggle('active', ps[j].getAttribute('data-slot') === slot);
+  }
+
+  function render(){
+    var d = view || now, live = !view;
+    var dow = d.getDay(), day = getDay(dow), w = isoWeek(d), type = C.types[day.type] || {};
+    wrap.style.setProperty('--cl', type.color || 'var(--ink)');
+    wrap.style.setProperty('--cd', type.dark || type.color || 'var(--ink)');
+    weekEl.innerHTML = weekHTML();
+    $('date').textContent = (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + DOW[dow] + '요일' + (live ? '' : ' 미리보기');
+    $('title').textContent = day.title;
+    var rest = day.rest || type.rest || [];
+    $('rest').textContent = rest.length ? (live ? '오늘' : '이날') + ' 쉬는 것: ' + rest.join(', ') : '';
+    $('rest').hidden = !rest.length;
+    $('back').hidden = live;
+    var c = checks();
+    slotsEl.innerHTML = slotHTML('am', day, w, live, c) + slotHTML('pm', day, w, live, c);
+    updateSeg();
+    var tm = $('tomorrow');
+    if (live) {
+      var t = new Date(d); t.setDate(d.getDate() + 1);
+      var td = getDay(t.getDay());
+      tm.textContent = '내일은 ' + DOW[t.getDay()] + '요일, ' + td.title + '.' + (td.prep ? ' ' + td.prep : '');
+      tm.hidden = false;
+    } else {
+      tm.hidden = true;
+    }
+  }
+
+  function renderStatic(){
+    document.title = C.title;
+    var total = 0, html = '';
+    (C.inventory || []).forEach(function(g){
+      html += '<div><h3>' + esc(g.group) + '</h3><ul>';
+      (g.items || []).forEach(function(it){
+        var o = typeof it === 'string' ? { name: it } : it;
+        if (!o.gone) total++;
+        html += '<li' + (o.note ? ' class="muted"' : '') + '>' + esc(o.name) + (o.note ? '<small>' + esc(o.note) + '</small>' : '') + '</li>';
+      });
+      html += '</ul></div>';
+    });
+    $('inv').innerHTML = html;
+    $('invCount').textContent = total + '개';
+    $('updated').textContent = C.updated ? '마지막 업데이트 ' + C.updated : '';
+    $('footer').textContent = C.footer || '';
+  }
+
+  slotsEl.addEventListener('change', function(e){
+    var inp = e.target;
+    if (!inp.classList || !inp.classList.contains('sr')) return;
+    var s = inp.closest('.slot').getAttribute('data-slot');
+    var c = checks();
+    c[s] = c[s] || [];
+    c[s][+inp.getAttribute('data-i')] = inp.checked;
+    store.set(c);
+    var total = (getDay(now.getDay())[s] || []).length, done = 0;
+    for (var i = 0; i < total; i++) if (c[s][i]) done++;
+    slotsEl.querySelector('[data-count="' + s + '"]').textContent = done + '/' + total;
+  });
+
+  seg.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-slot]');
+    if (!b) return;
+    slot = b.getAttribute('data-slot');
+    manual = true;
+    updateSeg();
+  });
+
+  weekEl.addEventListener('click', function(e){
+    var b = e.target.closest('.cell');
+    if (!b) return;
+    var k = b.getAttribute('data-key');
+    if (k === todayKey) { view = null; }
+    else { var p = k.split('-'); view = new Date(+p[0], +p[1] - 1, +p[2]); }
+    render();
+  });
+
+  $('back').addEventListener('click', function(){ view = null; render(); });
+
+  function tick(){
+    var n = new Date();
+    if (dateKey(n) !== todayKey) { location.reload(); return; }
+    now = n;
+    if (!manual && !view) {
+      var s = autoSlot(n);
+      if (s !== slot) { slot = s; updateSeg(); }
+    }
+  }
+  setInterval(tick, 60000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) tick(); });
+
+  renderStatic();
+  render();
+})();
+</script>
+</body>
+</html>

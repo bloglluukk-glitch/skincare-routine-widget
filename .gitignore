@@ -1,0 +1,25 @@
+# Local personal routines, drafts, backups, and source archives
+private/
+local/
+review/
+*private*
+*personal*
+*.zip
+*.bak
+*.tmp
+*.log
+*~
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.lnk
+Thumbs.db
+Desktop.ini
+.DS_Store
+node_modules/
+__pycache__/
+.vscode/
+.idea/
